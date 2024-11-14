@@ -111,20 +111,32 @@ serve(async (req) => {
   try {
     const url = new URL(req.url);
 
+    // 處理 OPTIONS 預檢請求
+    if (req.method === "OPTIONS") {
+      return new Response(null, {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        },
+      });
+    }
+
+    let response;
     if (url.pathname === "/") {
-      return handleDemoRequest(req);
-    }
-
-    if (url.pathname === "/tts") {
-      return handleDebugRequest(req);
-    }
-
-    if (url.pathname !== "/v1/audio/speech") {
+      response = await handleDemoRequest(req);
+    } else if (url.pathname === "/tts") {
+      response = await handleDebugRequest(req);
+    } else if (url.pathname === "/v1/audio/speech") {
+      response = await handleSynthesisRequest(req);
+    } else {
       console.log(`Unhandled path ${url.pathname}`);
-      return new Response("Not Found", { status: 404 });
+      response = new Response("Not Found", { status: 404 });
     }
 
-    return handleSynthesisRequest(req);
+    // 添加 CORS 標頭到每個回應
+    response.headers.set("Access-Control-Allow-Origin", "*");
+    return response;
   } catch (err) {
     console.error(`Error processing request: ${err.message}`);
     return new Response(`Internal Server Error\n${err.message}`, {
@@ -133,3 +145,4 @@ serve(async (req) => {
     });
   }
 });
+
